@@ -7,6 +7,7 @@ import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -212,7 +213,7 @@ public class SOOPChatClient implements AutoCloseable {
         return decodedMessage;
     }
 
-    private void notifyObservers(Map<String, Object> message) {
+    protected void notifyObservers(Map<String, Object> message) {
         for (IChatMessageObserver observer : observers) {
             try {
                 observer.notify(message);
@@ -300,9 +301,21 @@ public class SOOPChatClient implements AutoCloseable {
     private static int parseServiceCode(String header) {
         try {
             String[] headerParts = header.split("\t");
-            return Integer.parseInt(headerParts[headerParts.length - 1].substring(0, 4));
+            if (headerParts.length < 2) {
+                // LOGGER.warning("Header parts length is less than 2: " + headerParts.length);
+                return -1;
+            }
+            String lastPart = headerParts[headerParts.length - 1];
+            if (lastPart.length() < 4) {
+                LOGGER.warning("Last header part is too short: " + lastPart);
+                return -1;
+            }
+            return Integer.parseInt(lastPart.substring(0, 4));
         } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
             LOGGER.log(Level.WARNING, "Error parsing service code", e);
+            return -1;
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Unexpected error parsing service code", e);
             return -1;
         }
     }
